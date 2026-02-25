@@ -99,10 +99,21 @@ export const DEFAULT_SOUND_PACK: SoundPackId = "purple";
 export const getSoundPack = (packId: SoundPackId): SoundPack =>
   SOUND_PACKS[packId] ?? SOUND_PACKS[DEFAULT_SOUND_PACK];
 
+const normalizeBasePath = (value: string): string => {
+  if (!value || value === "/") {
+    return "";
+  }
+  return value.replace(/\/+$/, "");
+};
+
+const getBasePathPrefix = () =>
+  normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH ?? "");
+
 export const getDefaultSoundSource = (
   packId: SoundPackId,
   eventName: SoundEventName
 ): string => {
   const fileName = getSoundPack(packId).events[eventName];
-  return `/sounds/${packId}/${fileName}`;
+  const basePathPrefix = getBasePathPrefix();
+  return `${basePathPrefix}/sounds/${packId}/${fileName}`;
 };

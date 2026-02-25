@@ -4,10 +4,6 @@ PurpleOS is a from-scratch web desktop OS experience built with a premium dark-p
 
 The system includes a real window manager (draggable, resizable, focus/minimize/maximize/close), desktop shell (taskbar + start menu), right-side system panels, and app suite (Settings, Soundboard, Explorer, Notepad, Terminal).
 
-## Testing
-
-Use the full manual checklist in [TESTING.md](./TESTING.md).
-
 ## Core Highlights
 
 - Modern desktop UI with deep purple gradients and acrylic-style panels
@@ -50,21 +46,11 @@ All included audio assets are original placeholder tones generated for this proj
 - lucide-react
 - Web Audio / HTMLAudioElement
 
+## GitHub Pages
+
+https://ysfvoid.github.io/WINDOWS-12/
+
 ## Credits
 
 Developed by Ysf (Lone wolf developer).
 Without vibe coding.
-
-## Screenshots
-
-### Desktop Overview
-
-_Add screenshot: `docs/screenshots/desktop-overview.png`_
-
-### Notification Center + Quick Settings
-
-_Add screenshot: `docs/screenshots/system-panels.png`_
-
-### Soundboard + Settings
-
-_Add screenshot: `docs/screenshots/sound-system.png`_
