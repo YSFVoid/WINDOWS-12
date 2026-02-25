@@ -37,12 +37,32 @@ export default function WindowShell({ windowData, children }: WindowShellProps) 
   const minimizeWindow = useOSStore((state) => state.minimizeWindow);
   const toggleMaximize = useOSStore((state) => state.toggleMaximize);
   const updateWindowBounds = useOSStore((state) => state.updateWindowBounds);
+  const setSnapPreviewZone = useOSStore((state) => state.setSnapPreviewZone);
+  const applySnapWindow = useOSStore((state) => state.applySnapWindow);
   const playClickSoft = useOSStore((state) => state.playClickSoft);
   const reduceMotion = useOSStore((state) => state.settings.reduceMotion);
 
   const isFocused = focusedWindowId === windowData.id;
   const app = APP_REGISTRY[windowData.appId];
   const Icon = iconMap[windowData.appId];
+  const EDGE_THRESHOLD = 36;
+
+  const detectSnapZone = (x: number, y: number, width: number) => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    if (y <= EDGE_THRESHOLD) {
+      return "top" as const;
+    }
+    if (x <= EDGE_THRESHOLD) {
+      return "left" as const;
+    }
+    if (x + width >= window.innerWidth - EDGE_THRESHOLD) {
+      return "right" as const;
+    }
+    return null;
+  };
 
   return (
     <Rnd
@@ -60,8 +80,30 @@ export default function WindowShell({ windowData, children }: WindowShellProps) 
       dragHandleClassName="window-drag-handle"
       style={{ zIndex: windowData.z }}
       onMouseDown={() => focusWindow(windowData.id)}
-      onDragStart={() => focusWindow(windowData.id)}
+      onDragStart={() => {
+        focusWindow(windowData.id);
+        setSnapPreviewZone(null);
+      }}
+      onDrag={(_, data) => {
+        if (windowData.maximized) {
+          return;
+        }
+        const width = data.node?.offsetWidth ?? windowData.w;
+        const zone = detectSnapZone(data.x, data.y, width);
+        setSnapPreviewZone(zone);
+      }}
       onDragStop={(_, data) => {
+        if (windowData.maximized) {
+          return;
+        }
+
+        const width = data.node?.offsetWidth ?? windowData.w;
+        const zone = detectSnapZone(data.x, data.y, width);
+        if (zone) {
+          applySnapWindow(windowData.id, zone);
+          return;
+        }
+
         updateWindowBounds(windowData.id, { x: data.x, y: data.y });
       }}
       onResizeStop={(_, __, elementRef, ___, position) => {

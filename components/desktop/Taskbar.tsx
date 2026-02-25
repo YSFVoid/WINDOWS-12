@@ -131,7 +131,7 @@ export default function Taskbar() {
                 <button
                   key={windowData.id}
                   type="button"
-                  className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-medium transition ${
+                  className={`group relative inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-medium transition ${
                     isFocused
                       ? "border-violet-300/45 bg-violet-400/30 text-white"
                       : "border-white/10 bg-white/8 text-violet-100 hover:-translate-y-0.5 hover:bg-white/16 hover:shadow-[0_10px_24px_rgba(82,40,171,0.28)]"
@@ -140,6 +140,13 @@ export default function Taskbar() {
                 >
                   <Icon size={14} />
                   <span className="max-w-[150px] truncate">{windowData.title}</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 z-[110] mb-2 hidden w-44 -translate-x-1/2 rounded-xl border border-white/15 bg-[#120a28]/88 p-2 text-left backdrop-blur-xl group-hover:block">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-50">
+                      <Icon size={12} />
+                      {windowData.title}
+                    </span>
+                    <span className="mt-2 block h-10 rounded-lg border border-white/10 bg-gradient-to-br from-white/10 to-white/5" />
+                  </span>
                 </button>
               );
             })}

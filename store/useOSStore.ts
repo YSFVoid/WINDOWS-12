@@ -50,6 +50,7 @@ export type OSSettings = {
 };
 
 export type SidePanelTab = "notifications" | "quickSettings";
+export type SnapZone = "left" | "right" | "top" | null;
 
 export type OSSoundState = {
   packId: SoundPackId;
@@ -83,6 +84,7 @@ type OSStore = {
   startMenuOpen: boolean;
   sidePanelOpen: boolean;
   sidePanelTab: SidePanelTab;
+  snapPreviewZone: SnapZone;
   locked: boolean;
   notifications: OSNotification[];
   notificationHistory: OSNotification[];
@@ -104,6 +106,8 @@ type OSStore = {
   closeSidePanel: () => void;
   toggleSidePanel: (tab: SidePanelTab) => void;
   setSidePanelTab: (tab: SidePanelTab) => void;
+  setSnapPreviewZone: (zone: SnapZone) => void;
+  applySnapWindow: (windowId: string, zone: Exclude<SnapZone, null>) => void;
   lockSystem: () => void;
   unlockSystem: () => void;
 
@@ -271,6 +275,7 @@ export const useOSStore = create<OSStore>()(
       startMenuOpen: false,
       sidePanelOpen: false,
       sidePanelTab: "notifications",
+      snapPreviewZone: null,
       locked: false,
       notifications: [],
       notificationHistory: [],
@@ -292,6 +297,7 @@ export const useOSStore = create<OSStore>()(
             focusedWindowId: nextWindow.id,
             startMenuOpen: false,
             sidePanelOpen: false,
+            snapPreviewZone: null,
           };
         });
       },
@@ -303,6 +309,7 @@ export const useOSStore = create<OSStore>()(
           return {
             windows: nextWindows,
             focusedWindowId: getFocusCandidate(nextWindows),
+            snapPreviewZone: null,
           };
         });
       },
@@ -316,6 +323,7 @@ export const useOSStore = create<OSStore>()(
           return {
             windows: nextWindows,
             focusedWindowId: getFocusCandidate(nextWindows),
+            snapPreviewZone: null,
           };
         });
       },
@@ -346,6 +354,7 @@ export const useOSStore = create<OSStore>()(
                 : win
             ),
             focusedWindowId: windowId,
+            snapPreviewZone: null,
           };
         });
       },
@@ -365,6 +374,7 @@ export const useOSStore = create<OSStore>()(
                 : win
             ),
             focusedWindowId: windowId,
+            snapPreviewZone: null,
           };
         });
       },
@@ -374,6 +384,7 @@ export const useOSStore = create<OSStore>()(
           windows: state.windows.map((win) =>
             win.id === windowId ? { ...win, ...patch } : win
           ),
+          snapPreviewZone: null,
         }));
       },
 
@@ -391,6 +402,7 @@ export const useOSStore = create<OSStore>()(
                 : win
             ),
             focusedWindowId: windowId,
+            snapPreviewZone: null,
           };
         });
       },
@@ -423,11 +435,79 @@ export const useOSStore = create<OSStore>()(
           sidePanelTab: tab,
         })),
 
+      setSnapPreviewZone: (zone) => set({ snapPreviewZone: zone }),
+
+      applySnapWindow: (windowId, zone) => {
+        if (typeof window === "undefined") {
+          return;
+        }
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = Math.max(320, window.innerHeight - 78);
+
+        set((state) => {
+          const target = state.windows.find((win) => win.id === windowId);
+          if (!target) {
+            return state;
+          }
+
+          const topZ = getTopZ(state.windows) + 1;
+          const snappedBounds =
+            zone === "left"
+              ? {
+                  x: 0,
+                  y: 0,
+                  w: Math.floor(viewportWidth / 2),
+                  h: viewportHeight,
+                  maximized: false,
+                }
+              : zone === "right"
+                ? {
+                    x: Math.floor(viewportWidth / 2),
+                    y: 0,
+                    w: Math.ceil(viewportWidth / 2),
+                    h: viewportHeight,
+                    maximized: false,
+                  }
+                : {
+                    x: 0,
+                    y: 0,
+                    w: viewportWidth,
+                    h: viewportHeight,
+                    maximized: true,
+                  };
+
+          return {
+            windows: state.windows.map((win) =>
+              win.id === windowId
+                ? {
+                    ...win,
+                    ...snappedBounds,
+                    minimized: false,
+                    z: topZ,
+                  }
+                : win
+            ),
+            focusedWindowId: windowId,
+            snapPreviewZone: null,
+          };
+        });
+
+        if (zone === "top") {
+          soundManager.play("maximize");
+        }
+      },
+
       lockSystem: () => {
         if (get().locked) {
           return;
         }
-        set({ locked: true, startMenuOpen: false, sidePanelOpen: false });
+        set({
+          locked: true,
+          startMenuOpen: false,
+          sidePanelOpen: false,
+          snapPreviewZone: null,
+        });
         soundManager.play("lock");
       },
 
@@ -687,6 +767,8 @@ export const useOSStore = create<OSStore>()(
       name: "purpleos-store-v2",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        windows: state.windows,
+        focusedWindowId: state.focusedWindowId,
         files: state.files,
         notes: state.notes,
         notificationHistory: state.notificationHistory,

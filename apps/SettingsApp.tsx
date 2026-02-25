@@ -202,7 +202,9 @@ export default function SettingsApp() {
                   className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/20"
                   onClick={() => {
                     playClickSoft();
-                    resetSounds();
+                    if (window.confirm("Reset all sound mappings to defaults?")) {
+                      resetSounds();
+                    }
                   }}
                 >
                   <RotateCcw size={16} />

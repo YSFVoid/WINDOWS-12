@@ -22,6 +22,9 @@ npm run dev
 - Notification Center with history, clear-all, and per-item dismiss
 - Quick Settings panel (volume, mute, click sounds, reduce motion, battery indicator)
 - Start Menu search with keyboard launch flow (`Esc` + `Enter`)
+- Snap layouts (drag to left/right/top edges with live snap overlay)
+- Alt+Tab window switcher overlay
+- Taskbar hover preview cards for running apps
 - Terminal app with `about` command showing project credits
 
 ## Sound System

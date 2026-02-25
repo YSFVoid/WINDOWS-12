@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -32,10 +32,13 @@ let bootSequencePlayed = false;
 
 export default function Desktop() {
   const openApp = useOSStore((state) => state.openApp);
+  const windows = useOSStore((state) => state.windows);
   const locked = useOSStore((state) => state.locked);
   const notifications = useOSStore((state) => state.notifications);
   const dismissNotification = useOSStore((state) => state.dismissNotification);
   const unlockSystem = useOSStore((state) => state.unlockSystem);
+  const focusWindow = useOSStore((state) => state.focusWindow);
+  const restoreWindow = useOSStore((state) => state.restoreWindow);
   const reduceMotion = useOSStore((state) => state.settings.reduceMotion);
   const playEvent = useOSStore((state) => state.playEvent);
   const playClickSoft = useOSStore((state) => state.playClickSoft);
@@ -44,6 +47,15 @@ export default function Desktop() {
   const closeSidePanel = useOSStore((state) => state.closeSidePanel);
   const setStartMenuOpen = useOSStore((state) => state.setStartMenuOpen);
   const startMenuOpen = useOSStore((state) => state.startMenuOpen);
+  const [altTabOpen, setAltTabOpen] = useState(false);
+  const [altTabIndex, setAltTabIndex] = useState(0);
+
+  const altTabWindows = useMemo(
+    () => [...windows].sort((left, right) => right.z - left.z),
+    [windows]
+  );
+  const safeAltTabIndex =
+    altTabWindows.length > 0 ? altTabIndex % altTabWindows.length : 0;
 
   useEffect(() => {
     if (bootSequencePlayed) {
@@ -88,6 +100,61 @@ export default function Desktop() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeSidePanel, setStartMenuOpen, sidePanelOpen, startMenuOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab" && event.altKey) {
+        if (!altTabWindows.length) {
+          return;
+        }
+        event.preventDefault();
+        setAltTabOpen(true);
+        setAltTabIndex((current) => {
+          if (!altTabOpen) {
+            return altTabWindows.length > 1 ? 1 : 0;
+          }
+          if (event.shiftKey) {
+            return (current - 1 + altTabWindows.length) % altTabWindows.length;
+          }
+          return (current + 1) % altTabWindows.length;
+        });
+        return;
+      }
+
+      if (event.key === "Escape" && altTabOpen) {
+        event.preventDefault();
+        setAltTabOpen(false);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== "Alt" || !altTabOpen) {
+        return;
+      }
+      const target = altTabWindows[safeAltTabIndex];
+      if (target) {
+        if (target.minimized) {
+          restoreWindow(target.id);
+        } else {
+          focusWindow(target.id);
+        }
+      }
+      setAltTabOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [
+    altTabOpen,
+    altTabWindows,
+    focusWindow,
+    restoreWindow,
+    safeAltTabIndex,
+  ]);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#07030f] text-violet-50">
@@ -186,6 +253,49 @@ export default function Desktop() {
           ))}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {altTabOpen && altTabWindows.length ? (
+          <motion.div
+            className="pointer-events-none absolute inset-0 z-[106] flex items-center justify-center bg-black/25 backdrop-blur-[2px]"
+            initial={reduceMotion ? undefined : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.14 }}
+          >
+            <div className="glass-panel w-[min(92vw,640px)] rounded-[22px] border border-white/15 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-violet-200/70">
+                Switch Windows
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {altTabWindows.map((windowData, index) => {
+                  const Icon = iconMap[windowData.appId];
+                  const active = index === safeAltTabIndex;
+                  return (
+                    <article
+                      key={windowData.id}
+                      className={`rounded-xl border p-3 ${
+                        active
+                          ? "border-violet-300/40 bg-violet-400/24"
+                          : "border-white/10 bg-black/25"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-lg border border-white/12 bg-white/10 p-1.5 text-violet-100">
+                          <Icon size={14} />
+                        </span>
+                        <span className="text-sm font-semibold text-violet-50">
+                          {windowData.title}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {locked ? (
