@@ -6,6 +6,7 @@ import {
   Download,
   Import,
   ListMusic,
+  MonitorCog,
   RotateCcw,
   Square,
   Volume2,
@@ -17,6 +18,7 @@ import {
   CREDITS_PRIMARY_LINE,
   CREDITS_SECONDARY_LINE,
 } from "@/lib/credits";
+import { WALLPAPERS } from "@/lib/wallpapers";
 import { soundManager } from "@/lib/sounds/SoundManager";
 import {
   SOUND_EVENTS,
@@ -32,7 +34,7 @@ const toLabel = (value: string) =>
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (char) => char.toUpperCase());
 
-type TabKey = "sounds" | "about";
+type TabKey = "sounds" | "desktop" | "about";
 
 export default function SettingsApp() {
   const [activeTab, setActiveTab] = useState<TabKey>("sounds");
@@ -42,6 +44,7 @@ export default function SettingsApp() {
 
   const sound = useOSStore((state) => state.sound);
   const settings = useOSStore((state) => state.settings);
+  const desktop = useOSStore((state) => state.desktop);
   const setPack = useOSStore((state) => state.setPack);
   const setVolume = useOSStore((state) => state.setVolume);
   const toggleMute = useOSStore((state) => state.toggleMute);
@@ -54,6 +57,10 @@ export default function SettingsApp() {
   const setClickSoftEnabled = useOSStore((state) => state.setClickSoftEnabled);
   const setReduceMotion = useOSStore((state) => state.setReduceMotion);
   const setShowNoAiLine = useOSStore((state) => state.setShowNoAiLine);
+  const setDesktopSnapToGrid = useOSStore((state) => state.setDesktopSnapToGrid);
+  const setDesktopIconSize = useOSStore((state) => state.setDesktopIconSize);
+  const resetDesktopIconLayout = useOSStore((state) => state.resetDesktopIconLayout);
+  const setWallpaper = useOSStore((state) => state.setWallpaper);
   const playClickSoft = useOSStore((state) => state.playClickSoft);
 
   const activePack = useMemo(() => getSoundPack(sound.packId), [sound.packId]);
@@ -173,34 +180,29 @@ export default function SettingsApp() {
   return (
     <div className="flex h-full flex-col gap-4 text-violet-100">
       <div className="glass-panel flex items-center gap-2 rounded-2xl p-2">
-        <button
-          type="button"
-          className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "sounds"
-              ? "bg-violet-500/40 text-white"
-              : "text-violet-200/80 hover:bg-white/10"
-          }`}
-          onClick={() => {
-            playClickSoft();
-            setActiveTab("sounds");
-          }}
-        >
-          Sounds
-        </button>
-        <button
-          type="button"
-          className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-            activeTab === "about"
-              ? "bg-violet-500/40 text-white"
-              : "text-violet-200/80 hover:bg-white/10"
-          }`}
-          onClick={() => {
-            playClickSoft();
-            setActiveTab("about");
-          }}
-        >
-          About / Credits
-        </button>
+        {(
+          [
+            { key: "sounds", label: "Sounds" },
+            { key: "desktop", label: "Desktop" },
+            { key: "about", label: "About / Credits" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              activeTab === tab.key
+                ? "bg-violet-500/40 text-white"
+                : "text-violet-200/80 hover:bg-white/10"
+            }`}
+            onClick={() => {
+              playClickSoft();
+              setActiveTab(tab.key);
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {activeTab === "sounds" ? (
@@ -395,7 +397,101 @@ export default function SettingsApp() {
             </div>
           </section>
         </div>
-      ) : (
+      ) : null}
+
+      {activeTab === "desktop" ? (
+        <section className="glass-panel h-full rounded-2xl p-5">
+          <div className="flex items-center gap-2">
+            <MonitorCog size={16} className="text-violet-200/85" />
+            <h2 className="text-base font-semibold text-white">Desktop</h2>
+          </div>
+          <p className="mt-1 text-xs text-violet-100/70">
+            Manage icon behavior and visual background preferences.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <label className="flex items-center justify-between rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-sm text-violet-100">
+              <span>Snap icons to grid</span>
+              <input
+                type="checkbox"
+                checked={desktop.snapToGrid}
+                onChange={(event) => {
+                  setDesktopSnapToGrid(event.target.checked);
+                  playClickSoft();
+                }}
+              />
+            </label>
+            <div className="rounded-xl border border-white/10 bg-black/24 px-3 py-2">
+              <p className="text-sm text-violet-100">Icon size</p>
+              <div className="mt-2 flex items-center gap-1">
+                {(["small", "medium", "large"] as const).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                      desktop.iconSize === size
+                        ? "bg-violet-500/38 text-white"
+                        : "bg-white/7 text-violet-200 hover:bg-white/14"
+                    }`}
+                    onClick={() => {
+                      setDesktopIconSize(size);
+                      playClickSoft();
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/20"
+            onClick={() => {
+              playClickSoft();
+              if (window.confirm("Reset desktop icon positions to default layout?")) {
+                resetDesktopIconLayout();
+              }
+            }}
+          >
+            <RotateCcw size={15} />
+            Reset icon layout
+          </button>
+
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold text-violet-50">Wallpaper</h3>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {WALLPAPERS.map((wallpaperEntry) => (
+                <button
+                  key={wallpaperEntry.id}
+                  type="button"
+                  className={`overflow-hidden rounded-2xl border transition ${
+                    settings.wallpaper === wallpaperEntry.id
+                      ? "border-violet-300/45 shadow-[0_10px_25px_rgba(66,31,148,0.4)]"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                  onClick={() => {
+                    setWallpaper(wallpaperEntry.id);
+                    playClickSoft();
+                  }}
+                >
+                  <img
+                    src={wallpaperEntry.source}
+                    alt={wallpaperEntry.label}
+                    className="h-24 w-full object-cover"
+                  />
+                  <span className="block bg-black/30 px-2 py-1 text-xs text-violet-100">
+                    {wallpaperEntry.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "about" ? (
         <section className="glass-panel h-full rounded-2xl p-5">
           <h2 className="text-base font-semibold text-white">PurpleOS Credits</h2>
           <p className="mt-4 text-lg text-violet-50">{CREDITS_PRIMARY_LINE}</p>
@@ -418,7 +514,7 @@ export default function SettingsApp() {
             ) : null}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

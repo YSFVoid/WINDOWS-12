@@ -72,3 +72,11 @@ export const START_MENU_APPS: AppId[] = [
 ];
 
 export const DESKTOP_SHORTCUTS: AppId[] = ["explorer", "soundboard", "settings"];
+
+export const TASKBAR_PINNED_APPS: AppId[] = [
+  "explorer",
+  "soundboard",
+  "settings",
+  "terminal",
+  "notepad",
+];

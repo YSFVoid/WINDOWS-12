@@ -8,6 +8,7 @@ import {
 } from "zustand/middleware";
 
 import { APP_REGISTRY, type AppId } from "@/lib/apps";
+import { TASKBAR_RESERVED_HEIGHT } from "@/lib/layout";
 import {
   createInitialFilesystem,
   type ExplorerItem,
@@ -55,6 +56,14 @@ export type OSSettings = {
 
 export type SidePanelTab = "notifications" | "quickSettings";
 export type SnapZone = "left" | "right" | "top" | null;
+export type DesktopIconSize = "small" | "medium" | "large";
+export type DesktopIconPosition = { x: number; y: number };
+export type OSDesktopState = {
+  snapToGrid: boolean;
+  iconSize: DesktopIconSize;
+  iconPositions: Partial<Record<AppId, DesktopIconPosition>>;
+};
+export type AuthView = "lock" | "login" | null;
 
 export type OSSoundState = {
   packId: SoundPackId;
@@ -85,16 +94,19 @@ type PushNotificationOptions = {
 type OSStore = {
   windows: OSWindow[];
   focusedWindowId: string | null;
+  recentApps: AppId[];
   startMenuOpen: boolean;
   sidePanelOpen: boolean;
   sidePanelTab: SidePanelTab;
   snapPreviewZone: SnapZone;
   locked: boolean;
+  authView: AuthView;
   notifications: OSNotification[];
   notificationHistory: OSNotification[];
   files: ExplorerItem[];
   notes: string;
   settings: OSSettings;
+  desktop: OSDesktopState;
   sound: OSSoundState;
 
   openApp: (appId: AppId) => void;
@@ -132,6 +144,10 @@ type OSStore = {
   setWallpaper: (wallpaper: string) => void;
   setReduceMotion: (reduceMotion: boolean) => void;
   setShowNoAiLine: (enabled: boolean) => void;
+  setDesktopSnapToGrid: (enabled: boolean) => void;
+  setDesktopIconSize: (size: DesktopIconSize) => void;
+  setDesktopIconPosition: (appId: AppId, position: DesktopIconPosition) => void;
+  resetDesktopIconLayout: () => void;
 
   setVolume: (value: number) => void;
   toggleMute: () => void;
@@ -150,6 +166,9 @@ type OSStore = {
   ) => void;
   playClickSoft: () => void;
   preloadSounds: () => void;
+  showLoginView: () => void;
+  loginSession: () => void;
+  restartSession: () => void;
 };
 
 const DEFAULT_SETTINGS: OSSettings = {
@@ -157,6 +176,12 @@ const DEFAULT_SETTINGS: OSSettings = {
   wallpaper: "purple-nebula",
   reduceMotion: false,
   showNoAiLine: false,
+};
+
+const DEFAULT_DESKTOP: OSDesktopState = {
+  snapToGrid: true,
+  iconSize: "medium",
+  iconPositions: {},
 };
 
 const DEFAULT_SOUND: OSSoundState = {
@@ -170,6 +195,7 @@ const DEFAULT_SOUND: OSSoundState = {
 
 const MAX_TOASTS = 6;
 const MAX_HISTORY = 120;
+const MAX_RECENT_APPS = 12;
 const CLICK_SOFT_DEBOUNCE_MS = 80;
 
 const makeId = (prefix: string) =>
@@ -293,6 +319,48 @@ const sanitizeSettings = (input: unknown): OSSettings => {
   };
 };
 
+const sanitizeDesktopState = (input: unknown): OSDesktopState => {
+  if (!input || typeof input !== "object") {
+    return { ...DEFAULT_DESKTOP };
+  }
+
+  const source = input as Partial<OSDesktopState> & {
+    iconPositions?: Record<string, DesktopIconPosition>;
+  };
+  const iconPositions: Partial<Record<AppId, DesktopIconPosition>> = {};
+
+  if (source.iconPositions && typeof source.iconPositions === "object") {
+    for (const appId of Object.keys(APP_REGISTRY) as AppId[]) {
+      const position = source.iconPositions[appId];
+      if (
+        position &&
+        typeof position === "object" &&
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y)
+      ) {
+        iconPositions[appId] = {
+          x: position.x,
+          y: position.y,
+        };
+      }
+    }
+  }
+
+  return {
+    snapToGrid:
+      typeof source.snapToGrid === "boolean"
+        ? source.snapToGrid
+        : DEFAULT_DESKTOP.snapToGrid,
+    iconSize:
+      source.iconSize === "small" ||
+      source.iconSize === "medium" ||
+      source.iconSize === "large"
+        ? source.iconSize
+        : DEFAULT_DESKTOP.iconSize,
+    iconPositions,
+  };
+};
+
 const sanitizeSoundState = (input: unknown): OSSoundState => {
   if (!input || typeof input !== "object") {
     return { ...DEFAULT_SOUND };
@@ -321,6 +389,19 @@ const sanitizeSoundState = (input: unknown): OSSoundState => {
     mappings: sanitizeMappings(source.mappings),
     customFilesMeta: sanitizeMeta(source.customFilesMeta),
   };
+};
+
+const sanitizeRecentApps = (input: unknown): AppId[] => {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const recents = input.filter(
+    (entry): entry is AppId =>
+      typeof entry === "string" && entry in APP_REGISTRY
+  );
+
+  return Array.from(new Set(recents)).slice(0, MAX_RECENT_APPS);
 };
 
 const sanitizeNotificationHistory = (input: unknown): OSNotification[] => {
@@ -476,16 +557,19 @@ export const useOSStore = create<OSStore>()(
     (set, get) => ({
       windows: [],
       focusedWindowId: null,
+      recentApps: [],
       startMenuOpen: false,
       sidePanelOpen: false,
       sidePanelTab: "notifications",
       snapPreviewZone: null,
-      locked: false,
+      locked: true,
+      authView: "lock",
       notifications: [],
       notificationHistory: [],
       files: createInitialFilesystem(),
       notes: "",
       settings: DEFAULT_SETTINGS,
+      desktop: DEFAULT_DESKTOP,
       sound: DEFAULT_SOUND,
 
       openApp: (appId) => {
@@ -495,13 +579,20 @@ export const useOSStore = create<OSStore>()(
             return state;
           }
           const nextWindow = makeWindow(appId, state.windows);
+          const nextRecents = [
+            appId,
+            ...state.recentApps.filter((entry) => entry !== appId),
+          ].slice(0, MAX_RECENT_APPS);
           soundManager.play("openWindow");
           return {
             windows: [...state.windows, nextWindow],
             focusedWindowId: nextWindow.id,
+            recentApps: nextRecents,
             startMenuOpen: false,
             sidePanelOpen: false,
             snapPreviewZone: null,
+            locked: false,
+            authView: null,
           };
         });
       },
@@ -657,7 +748,10 @@ export const useOSStore = create<OSStore>()(
         }
 
         const viewportWidth = window.innerWidth;
-        const viewportHeight = Math.max(320, window.innerHeight - 78);
+        const viewportHeight = Math.max(
+          320,
+          window.innerHeight - TASKBAR_RESERVED_HEIGHT
+        );
 
         set((state) => {
           const target = state.windows.find((win) => win.id === windowId);
@@ -718,6 +812,7 @@ export const useOSStore = create<OSStore>()(
         }
         set({
           locked: true,
+          authView: "lock",
           startMenuOpen: false,
           sidePanelOpen: false,
           snapPreviewZone: null,
@@ -726,10 +821,11 @@ export const useOSStore = create<OSStore>()(
       },
 
       unlockSystem: () => {
-        if (!get().locked) {
+        const { locked, authView } = get();
+        if (!locked && authView !== "lock") {
           return;
         }
-        set({ locked: false });
+        set({ authView: "login" });
         soundManager.play("unlock");
       },
 
@@ -845,6 +941,40 @@ export const useOSStore = create<OSStore>()(
       setShowNoAiLine: (enabled) =>
         set((state) => ({
           settings: { ...state.settings, showNoAiLine: enabled },
+        })),
+      setDesktopSnapToGrid: (enabled) =>
+        set((state) => ({
+          desktop: {
+            ...state.desktop,
+            snapToGrid: enabled,
+          },
+        })),
+      setDesktopIconSize: (size) =>
+        set((state) => ({
+          desktop: {
+            ...state.desktop,
+            iconSize: size,
+          },
+        })),
+      setDesktopIconPosition: (appId, position) =>
+        set((state) => ({
+          desktop: {
+            ...state.desktop,
+            iconPositions: {
+              ...state.desktop.iconPositions,
+              [appId]: {
+                x: position.x,
+                y: position.y,
+              },
+            },
+          },
+        })),
+      resetDesktopIconLayout: () =>
+        set((state) => ({
+          desktop: {
+            ...state.desktop,
+            iconPositions: {},
+          },
         })),
 
       setVolume: (value) => {
@@ -976,6 +1106,44 @@ export const useOSStore = create<OSStore>()(
       preloadSounds: () => {
         soundManager.preloadCurrentPack();
       },
+
+      showLoginView: () => {
+        set({
+          locked: true,
+          authView: "login",
+          startMenuOpen: false,
+          sidePanelOpen: false,
+          snapPreviewZone: null,
+        });
+      },
+
+      loginSession: () => {
+        set({
+          locked: false,
+          authView: null,
+          startMenuOpen: false,
+          sidePanelOpen: false,
+          snapPreviewZone: null,
+        });
+        soundManager.play("login", { volumeMultiplier: 0.65 });
+      },
+
+      restartSession: () => {
+        set((state) => ({
+          windows: [],
+          focusedWindowId: null,
+          startMenuOpen: false,
+          sidePanelOpen: false,
+          sidePanelTab: "notifications",
+          snapPreviewZone: null,
+          locked: true,
+          authView: "lock",
+          notifications: [],
+          notificationHistory: [],
+          recentApps: state.recentApps,
+        }));
+        soundManager.play("boot", { volumeMultiplier: 0.65 });
+      },
     }),
     {
       name: "purpleos-store-v2",
@@ -983,10 +1151,12 @@ export const useOSStore = create<OSStore>()(
       partialize: (state) => ({
         windows: state.windows,
         focusedWindowId: state.focusedWindowId,
+        recentApps: state.recentApps,
         files: state.files,
         notes: state.notes,
         notificationHistory: state.notificationHistory,
         settings: state.settings,
+        desktop: state.desktop,
         sound: state.sound,
       }),
       onRehydrateStorage: () => (state) => {
@@ -1004,8 +1174,16 @@ export const useOSStore = create<OSStore>()(
         state.notificationHistory = sanitizeNotificationHistory(
           state.notificationHistory
         );
+        state.recentApps = sanitizeRecentApps(state.recentApps);
         state.settings = sanitizeSettings(state.settings);
+        state.desktop = sanitizeDesktopState(state.desktop);
         state.sound = sanitizeSoundState(state.sound);
+        state.authView = "lock";
+        state.locked = true;
+        state.startMenuOpen = false;
+        state.sidePanelOpen = false;
+        state.snapPreviewZone = null;
+        state.notifications = [];
 
         applySoundStateToManager(state.sound);
       },

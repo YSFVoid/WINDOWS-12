@@ -8,13 +8,14 @@ import {
   FolderOpen,
   Lock,
   NotebookPen,
+  Search,
   Settings2,
   TerminalSquare,
-  Unlock,
   Volume2,
 } from "lucide-react";
 
 import { APP_REGISTRY, START_MENU_APPS, type AppId } from "@/lib/apps";
+import { TASKBAR_DOCK_BOTTOM, TASKBAR_DOCK_HEIGHT } from "@/lib/layout";
 import { useOSStore } from "@/store/useOSStore";
 
 const iconMap: Record<AppId, React.ComponentType<{ size?: number }>> = {
@@ -31,11 +32,10 @@ export default function StartMenu() {
 
   const startMenuOpen = useOSStore((state) => state.startMenuOpen);
   const reduceMotion = useOSStore((state) => state.settings.reduceMotion);
-  const locked = useOSStore((state) => state.locked);
+  const recentApps = useOSStore((state) => state.recentApps);
   const openApp = useOSStore((state) => state.openApp);
   const setStartMenuOpen = useOSStore((state) => state.setStartMenuOpen);
   const lockSystem = useOSStore((state) => state.lockSystem);
-  const unlockSystem = useOSStore((state) => state.unlockSystem);
   const pushNotification = useOSStore((state) => state.pushNotification);
   const playClickSoft = useOSStore((state) => state.playClickSoft);
 
@@ -53,6 +53,11 @@ export default function StartMenu() {
       );
     });
   }, [query]);
+
+  const recommendedApps = useMemo(
+    () => recentApps.filter((appId) => appId in APP_REGISTRY).slice(0, 5),
+    [recentApps]
+  );
 
   const launchApp = (appId: AppId) => {
     playClickSoft();
@@ -73,22 +78,20 @@ export default function StartMenu() {
       return;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         setStartMenuOpen(false);
-      }
-
-      if (event.key === "Enter" && filteredApps.length) {
+      } else if (event.key === "Enter" && filteredApps.length) {
         event.preventDefault();
         playClickSoft();
         openApp(filteredApps[0]);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filteredApps, openApp, playClickSoft, startMenuOpen, setStartMenuOpen]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [filteredApps, openApp, playClickSoft, setStartMenuOpen, startMenuOpen]);
 
   return (
     <AnimatePresence>
@@ -97,103 +100,123 @@ export default function StartMenu() {
           <motion.button
             type="button"
             aria-label="Close start menu"
-            className="absolute inset-0 z-[70] h-full w-full cursor-default bg-black/25"
+            className="absolute inset-0 z-[80] h-full w-full bg-black/26"
             onClick={() => setStartMenuOpen(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+            transition={{ duration: reduceMotion ? 0 : 0.16 }}
           />
-          <motion.aside
-            initial={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: 12, scale: 0.99 }}
-            transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
-            className="glass-panel absolute bottom-[84px] left-4 z-[80] w-[min(96vw,460px)] rounded-[22px] border border-white/15 p-4"
-          >
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/12 to-white/6 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-violet-200/70">
-                PurpleOS
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-white">Start Menu</h2>
-              <p className="mt-1 text-sm text-violet-100/75">
-                Launch apps and system actions from this panel.
-              </p>
-            </div>
 
-            <div className="mt-3">
+          <motion.aside
+            className="start-menu-shell absolute left-1/2 z-[85] w-[min(96vw,640px)] -translate-x-1/2 rounded-[24px] border border-white/16 p-4"
+            style={{ bottom: `${TASKBAR_DOCK_BOTTOM + TASKBAR_DOCK_HEIGHT + 14}px` }}
+            initial={reduceMotion ? undefined : { opacity: 0, y: 14, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: 10, filter: "blur(4px)" }}
+            transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+          >
+            <div className="relative">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-200/70"
+              />
               <input
                 ref={searchRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search apps..."
-                className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2 text-sm text-violet-50 outline-none ring-violet-300/40 transition focus:ring-2"
+                placeholder="Search apps, settings, and files"
+                className="w-full rounded-2xl border border-white/12 bg-black/30 py-2.5 pl-9 pr-3 text-sm text-violet-50 outline-none ring-violet-300/40 transition focus:ring-2"
               />
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              {filteredApps.length ? (
-                filteredApps.map((appId) => {
+            <section className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-violet-50">Pinned</h3>
+                <span className="text-xs text-violet-200/65">{filteredApps.length} apps</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {filteredApps.map((appId) => {
                   const app = APP_REGISTRY[appId];
                   const Icon = iconMap[appId];
-
                   return (
                     <button
                       key={appId}
                       type="button"
-                      className="group flex items-center justify-between rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-left transition hover:border-violet-200/35 hover:bg-white/14"
+                      className="group rounded-2xl border border-white/10 bg-white/7 px-3 py-3 text-left transition hover:border-violet-200/35 hover:bg-white/16"
                       onClick={() => launchApp(appId)}
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="rounded-lg border border-white/10 bg-white/10 p-1.5 text-violet-100">
-                          <Icon size={14} />
-                        </span>
-                        <span>
-                          <span className="block text-sm font-semibold text-violet-50">
-                            {app.title}
-                          </span>
-                          <span className="block text-xs text-violet-100/65">
-                            {app.description}
-                          </span>
-                        </span>
+                      <span className="inline-flex rounded-xl border border-white/12 bg-white/10 p-2 text-violet-100">
+                        <Icon size={15} />
+                      </span>
+                      <span className="mt-2 block text-xs font-semibold text-violet-50">
+                        {app.title}
                       </span>
                     </button>
                   );
-                })
-              ) : (
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-4 text-sm text-violet-200/75">
+                })}
+              </div>
+              {!filteredApps.length ? (
+                <div className="mt-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-violet-200/70">
                   No app matched &quot;{query}&quot;.
                 </div>
-              )}
-            </div>
+              ) : null}
+            </section>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <section className="mt-4 rounded-2xl border border-white/10 bg-black/24 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-violet-50">Recommended</h3>
+                <span className="text-xs text-violet-200/65">Recent</span>
+              </div>
+              <div className="space-y-1.5">
+                {recommendedApps.length ? (
+                  recommendedApps.map((appId) => {
+                    const app = APP_REGISTRY[appId];
+                    const Icon = iconMap[appId];
+                    return (
+                      <button
+                        key={`recommended-${appId}`}
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm text-violet-100 transition hover:bg-white/10"
+                        onClick={() => launchApp(appId)}
+                      >
+                        <span className="rounded-lg border border-white/12 bg-white/10 p-1.5">
+                          <Icon size={13} />
+                        </span>
+                        <span>{app.title}</span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-violet-200/70">
+                    Open apps to populate recommendations.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/8 px-3 py-2 text-sm font-medium text-violet-100 transition hover:bg-white/16"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-violet-100 transition hover:bg-white/14"
                 onClick={() => {
                   playClickSoft();
-                  pushNotification("PurpleOS", "Start menu quick notify.");
+                  pushNotification("PurpleOS", "Pinned layout is up to date.");
                 }}
               >
-                <BellRing size={14} />
+                <BellRing size={13} />
                 Notify
               </button>
-
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/8 px-3 py-2 text-sm font-medium text-violet-100 transition hover:bg-white/16"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-violet-100 transition hover:bg-white/14"
                 onClick={() => {
                   playClickSoft();
-                  if (locked) {
-                    unlockSystem();
-                  } else {
-                    lockSystem();
-                  }
+                  lockSystem();
                 }}
               >
-                {locked ? <Unlock size={14} /> : <Lock size={14} />}
-                {locked ? "Unlock" : "Lock"}
+                <Lock size={13} />
+                Lock
               </button>
             </div>
           </motion.aside>

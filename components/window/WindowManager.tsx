@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { AnimatePresence, motion } from "framer-motion";
 
 import ExplorerApp from "@/apps/ExplorerApp";
@@ -7,6 +9,7 @@ import NotepadApp from "@/apps/NotepadApp";
 import SettingsApp from "@/apps/SettingsApp";
 import SoundboardApp from "@/apps/SoundboardApp";
 import TerminalApp from "@/apps/TerminalApp";
+import { TASKBAR_RESERVED_HEIGHT } from "@/lib/layout";
 import type { AppId } from "@/lib/apps";
 import { useOSStore } from "@/store/useOSStore";
 
@@ -25,25 +28,31 @@ const appComponentMap: Record<AppId, React.ComponentType<WindowAppProps>> = {
 };
 
 export default function WindowManager() {
-  const windows = useOSStore((state) =>
-    [...state.windows].sort((left, right) => left.z - right.z)
-  );
+  const windows = useOSStore((state) => state.windows);
   const reduceMotion = useOSStore((state) => state.settings.reduceMotion);
   const snapPreviewZone = useOSStore((state) => state.snapPreviewZone);
+  const orderedWindows = useMemo(
+    () => [...windows].sort((left, right) => left.z - right.z),
+    [windows]
+  );
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 pb-[78px]">
+    <div
+      className="pointer-events-none absolute inset-x-0 top-0 z-30"
+      style={{ bottom: `${TASKBAR_RESERVED_HEIGHT}px` }}
+    >
       <AnimatePresence>
         {snapPreviewZone ? (
           <motion.div
             key={snapPreviewZone}
-            className={`pointer-events-none absolute top-0 bottom-[78px] rounded-2xl border border-violet-200/35 bg-violet-400/18 ${
+            className={`pointer-events-none absolute top-0 rounded-2xl border border-violet-200/40 bg-violet-500/12 ${
               snapPreviewZone === "left"
                 ? "left-0 w-1/2"
                 : snapPreviewZone === "right"
                   ? "right-0 w-1/2"
                   : "left-0 right-0"
             }`}
+            style={{ bottom: 0 }}
             initial={reduceMotion ? undefined : { opacity: 0.2 }}
             animate={{ opacity: 1 }}
             exit={reduceMotion ? undefined : { opacity: 0 }}
@@ -53,7 +62,7 @@ export default function WindowManager() {
       </AnimatePresence>
 
       <AnimatePresence mode="popLayout">
-        {windows
+        {orderedWindows
           .filter((windowData) => !windowData.minimized)
           .map((windowData) => {
             const AppComponent = appComponentMap[windowData.appId];

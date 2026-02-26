@@ -34,10 +34,10 @@ function TabButton({ tab, activeTab, onClick, children, icon }: TabButtonProps) 
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
         isActive
-          ? "border-violet-200/35 bg-violet-400/25 text-violet-50"
-          : "border-white/10 bg-white/8 text-violet-200/80 hover:bg-white/16"
+          ? "border-violet-200/35 bg-violet-400/28 text-violet-50"
+          : "border-white/10 bg-white/6 text-violet-200/85 hover:bg-white/14"
       }`}
       onClick={() => onClick(tab)}
     >
@@ -97,7 +97,7 @@ export default function SystemPanel() {
           <motion.button
             type="button"
             aria-label="Close system panel"
-            className="absolute inset-0 z-[92] h-full w-full bg-black/35"
+            className="absolute inset-0 z-[92] h-full w-full bg-black/30"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -106,7 +106,7 @@ export default function SystemPanel() {
           />
 
           <motion.aside
-            className="glass-panel absolute right-4 top-4 z-[93] flex h-[calc(100vh-96px)] w-[min(96vw,440px)] flex-col rounded-[22px] border border-white/15 p-4"
+            className="system-panel-shell absolute right-4 top-4 z-[93] flex h-[calc(100vh-98px)] w-[min(95vw,392px)] flex-col rounded-[24px] border border-white/14 p-4"
             initial={reduceMotion ? undefined : { opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, x: 18 }}
@@ -116,7 +116,7 @@ export default function SystemPanel() {
               <h2 className="text-lg font-semibold text-violet-50">System Panel</h2>
               <button
                 type="button"
-                className="rounded-lg border border-white/10 bg-white/8 p-1.5 text-violet-100 transition hover:bg-white/16"
+                className="rounded-full border border-white/10 bg-white/6 p-1.5 text-violet-100 transition hover:bg-white/14"
                 onClick={() => {
                   playClickSoft();
                   closeSidePanel();
@@ -126,7 +126,7 @@ export default function SystemPanel() {
               </button>
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-1.5">
               <TabButton
                 tab="notifications"
                 activeTab={sidePanelTab}
@@ -175,10 +175,10 @@ export default function SystemPanel() {
                     orderedHistory.map((notification) => (
                       <article
                         key={notification.id}
-                        className={`rounded-xl border p-3 ${
+                        className={`rounded-2xl border p-3 ${
                           notification.level === "error"
                             ? "border-rose-300/30 bg-rose-400/18"
-                            : "border-white/10 bg-black/25"
+                            : "border-white/10 bg-black/24"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -204,7 +204,7 @@ export default function SystemPanel() {
                       </article>
                     ))
                   ) : (
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-violet-200/70">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-violet-200/70">
                       No notifications yet.
                     </div>
                   )}
@@ -212,7 +212,7 @@ export default function SystemPanel() {
               </section>
             ) : (
               <section className="mt-4 flex min-h-0 flex-1 flex-col">
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="rounded-2xl border border-white/10 bg-black/24 p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-violet-50">Audio</p>
                     <button
@@ -253,7 +253,7 @@ export default function SystemPanel() {
                   </button>
                 </div>
 
-                <div className="mt-3 space-y-2">
+                <div className="mt-3 grid grid-cols-2 gap-2">
                   <label className="flex items-center justify-between rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-sm text-violet-100">
                     <span>Click sounds</span>
                     <input

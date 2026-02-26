@@ -121,56 +121,58 @@ export default function WindowShell({ windowData, children }: WindowShellProps) 
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={reduceMotion ? undefined : { opacity: 0, y: 8, scale: 0.985 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
-        className={`flex h-full flex-col overflow-hidden rounded-[20px] border backdrop-blur-xl ${
+        className={`flex h-full flex-col overflow-hidden rounded-[18px] border backdrop-blur-xl ${
           isFocused
-            ? "border-violet-200/30 bg-[#0f0823]/68 shadow-[0_26px_85px_rgba(20,6,42,0.6)]"
-            : "border-white/10 bg-[#0b0819]/62 shadow-[0_18px_62px_rgba(8,3,24,0.52)]"
+            ? "border-violet-200/35 bg-[#0e0822]/72 shadow-[0_26px_85px_rgba(16,5,37,0.68),0_0_0_1px_rgba(193,167,255,0.12)]"
+            : "border-white/12 bg-[#0b0819]/64 shadow-[0_18px_62px_rgba(8,3,24,0.55)]"
         }`}
       >
-        <div className="window-drag-handle flex h-12 items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/10 to-white/5 px-3">
+        <div className="window-drag-handle flex h-10 items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/11 to-white/4 px-3">
           <div className="flex items-center gap-2">
-            <span className="rounded-lg border border-white/15 bg-white/10 p-1.5 text-violet-100">
-              <Icon size={14} />
+            <span className="rounded-md border border-white/15 bg-white/10 p-1.5 text-violet-100">
+              <Icon size={13} />
             </span>
-            <span className="text-sm font-semibold text-violet-50">{app.title}</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-violet-100/95">
+              {app.title}
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               aria-label="Minimize window"
-              className="rounded-lg border border-transparent p-1.5 text-violet-100/80 transition hover:border-white/15 hover:bg-white/10 hover:text-violet-50"
+              className="rounded-md border border-transparent p-1 text-violet-100/80 transition hover:border-white/15 hover:bg-white/10 hover:text-violet-50"
               onClick={(event) => {
                 event.stopPropagation();
                 playClickSoft();
                 minimizeWindow(windowData.id);
               }}
             >
-              <Minus size={14} />
+              <Minus size={13} />
             </button>
             <button
               type="button"
               aria-label="Maximize window"
-              className="rounded-lg border border-transparent p-1.5 text-violet-100/80 transition hover:border-white/15 hover:bg-white/10 hover:text-violet-50"
+              className="rounded-md border border-transparent p-1 text-violet-100/80 transition hover:border-white/15 hover:bg-white/10 hover:text-violet-50"
               onClick={(event) => {
                 event.stopPropagation();
                 playClickSoft();
                 toggleMaximize(windowData.id);
               }}
             >
-              <Maximize2 size={14} />
+              <Maximize2 size={13} />
             </button>
             <button
               type="button"
               aria-label="Close window"
-              className="rounded-lg border border-transparent p-1.5 text-violet-100/80 transition hover:border-rose-200/20 hover:bg-rose-400/20 hover:text-rose-100"
+              className="rounded-md border border-transparent p-1 text-violet-100/80 transition hover:border-rose-200/20 hover:bg-rose-400/20 hover:text-rose-100"
               onClick={(event) => {
                 event.stopPropagation();
                 playClickSoft();
                 closeWindow(windowData.id);
               }}
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           </div>
         </div>

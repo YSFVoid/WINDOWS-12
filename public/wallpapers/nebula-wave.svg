@@ -1,0 +1,25 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="110" y1="0" x2="1830" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#080315"/>
+      <stop offset="0.52" stop-color="#100723"/>
+      <stop offset="1" stop-color="#03010A"/>
+    </linearGradient>
+    <radialGradient id="blobA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(320 500) scale(640 420)">
+      <stop stop-color="#5C6BFF" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#5C6BFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1010 230) scale(520 360)">
+      <stop stop-color="#AD5DFF" stop-opacity="0.47"/>
+      <stop offset="1" stop-color="#AD5DFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobC" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1620 700) scale(540 360)">
+      <stop stop-color="#4FD5FF" stop-opacity="0.36"/>
+      <stop offset="1" stop-color="#4FD5FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <ellipse cx="320" cy="500" rx="640" ry="420" fill="url(#blobA)"/>
+  <ellipse cx="1010" cy="230" rx="520" ry="360" fill="url(#blobB)"/>
+  <ellipse cx="1620" cy="700" rx="540" ry="360" fill="url(#blobC)"/>
+</svg>
